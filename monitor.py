@@ -5,7 +5,7 @@ import os
 from deep_translator import GoogleTranslator
 
 # ✅ ICT의 X 아이디 입력 (@ 제외)
-X_USERNAME = I_Am_The_ICT
+X_USERNAME = "I_Am_The_ICT"
 
 NITTER_INSTANCE = "https://nitter.poast.org"
 DISCORD_WEBHOOK = os.environ.get("DISCORD_WEBHOOK_URL")
