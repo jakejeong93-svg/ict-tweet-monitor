@@ -4,10 +4,12 @@ import re
 import os
 from deep_translator import GoogleTranslator
 
-# ✅ ICT의 X 아이디 입력 (@ 제외)
+# ✅ ICT의 X 아이디
 X_USERNAME = "I_Am_The_ICT"
 
-NITTER_INSTANCE = "https://nitter.catsarch.com"
+# ✅ rss.app RSS 피드 URL
+RSS_FEED_URL = "https://rss.app/feeds/J3q7JW6pXSmrLyLv.xml"
+
 DISCORD_WEBHOOK = os.environ.get("DISCORD_WEBHOOK_URL")
 LAST_ID_FILE = "last_tweet_id.txt"
 
@@ -38,9 +40,17 @@ PROTECTED_TERMS = [
 PROTECTED_TERMS = sorted(PROTECTED_TERMS, key=len, reverse=True)
 
 def get_tweets():
-    url = f"{NITTER_INSTANCE}/{X_USERNAME}/rss"
-    feed = feedparser.parse(url)
-    return feed.entries
+    try:
+        feed = feedparser.parse(RSS_FEED_URL)
+        if feed.entries:
+            print(f"트윗 {len(feed.entries)}개 가져오기 성공")
+            return feed.entries
+        else:
+            print("트윗을 가져오지 못했습니다.")
+            return []
+    except Exception as e:
+        print(f"RSS 피드 오류: {e}")
+        return []
 
 def clean_text(text):
     return re.sub(r'<[^>]+>', '', text).strip()
@@ -75,7 +85,11 @@ def send_discord(original, translated, link):
             "color": 1942002
         }]
     }
-    requests.post(DISCORD_WEBHOOK, json=data)
+    response = requests.post(DISCORD_WEBHOOK, json=data)
+    if response.status_code == 204:
+        print("Discord 전송 성공")
+    else:
+        print(f"Discord 전송 실패: {response.status_code}")
 
 def get_last_id():
     if os.path.exists(LAST_ID_FILE):
@@ -90,18 +104,23 @@ def save_last_id(tweet_id):
 def main():
     tweets = get_tweets()
     if not tweets:
-        print("트윗을 가져오지 못했습니다.")
         return
+
     last_id = get_last_id()
     new_tweets = [t for t in tweets if t.id != last_id]
+
     if not new_tweets:
         print("새 트윗 없음")
         return
+
+    print(f"새 트윗 {len(new_tweets)}개 발견")
+
     for tweet in reversed(new_tweets):
         original = clean_text(tweet.summary)
         translated = translate(original)
         send_discord(original, translated, tweet.link)
         print(f"전송 완료: {original[:50]}...")
+
     save_last_id(tweets[0].id)
 
 if __name__ == "__main__":
